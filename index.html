@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Match Game</title>
+    <style>
+        /* --- CSS Styling --- */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #e9ecef;
+        }
+
+        #game-board {
+            position: relative;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            text-align: center;
+            width: 300px;
+        }
+
+        /* Top Right Close Button */
+        #close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #ff4d4d;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        #game-image {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            margin: 20px 0;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+
+        #speak-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #speak-btn:hover {
+            background-color: #45a049;
+        }
+
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #555;
+            min-height: 20px;
+        }
+
+        /* Screen shown when the game is closed */
+        #closed-screen {
+            display: none;
+            text-align: center;
+            font-size: 24px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-board">
+        <button id="close-btn" title="Close Game">&times;</button>
+        <img id="game-image" src="" alt="Guess the image">
+        <br>
+        <button id="speak-btn">🎤 Tap to Speak</button>
+        <div id="status"></div>
+    </div>
+
+    <div id="closed-screen">
+        Game Closed. Refresh the page to play again!
+    </div>
+
+    <script>
+        /* --- JavaScript Logic --- */
+        
+        // 1. Set up game data (using placeholder images for the example)
+        const gameItems = [
+            { src: "https://placehold.co/200x200/FFB6C1/000?text=Apple", word: "apple" },
+            { src: "https://placehold.co/200x200/ADD8E6/000?text=Dog", word: "dog" },
+            { src: "https://placehold.co/200x200/90EE90/000?text=Car", word: "car" },
+			{ src: "https://placehold.co/200x200/90EE90/000?text=Hello", word: "hello" },
+			{ src: "https://placehold.co/200x200/90EE90/000?text=Bye", word: "bye" },
+			{ src: "https://placehold.co/200x200/90EE90/000?text=Tea", word: "tea" }
+        ];
+        
+        let currentIndex = 0;
+
+        // 2. Grab HTML elements
+        const imageElement = document.getElementById('game-image');
+        const speakBtn = document.getElementById('speak-btn');
+        const statusText = document.getElementById('status');
+        const closeBtn = document.getElementById('close-btn');
+        const gameBoard = document.getElementById('game-board');
+        const closedScreen = document.getElementById('closed-screen');
+
+        // 3. Setup Web Speech API (Text-to-Speech & Speech-to-Text)
+        const synth = window.speechSynthesis;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            alert("Sorry, your browser doesn't support voice recognition. Try Google Chrome.");
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+
+        // 4. Game Functions
+        function loadNextImage() {
+            if (currentIndex < gameItems.length) {
+                imageElement.src = gameItems[currentIndex].src;
+                statusText.innerText = "What is this?";
+            } else {
+                speak("You won the game!");
+                gameBoard.style.display = 'none';
+                closedScreen.style.display = 'block';
+                closedScreen.innerText = "You Won! Refresh to play again.";
+            }
+        }
+
+        function speak(text) {
+            // Cancel any current speech before speaking the new text
+            synth.cancel(); 
+            const utterThis = new SpeechSynthesisUtterance(text);
+            synth.speak(utterThis);
+        }
+
+        // 5. Button Listeners
+        speakBtn.addEventListener('click', () => {
+            statusText.innerText = "Listening...";
+            recognition.start();
+        });
+
+        closeBtn.addEventListener('click', () => {
+            // Browsers don't allow JS to close a tab unless JS opened it, 
+            // so we "close" the game by hiding it.
+            gameBoard.style.display = 'none';
+            closedScreen.style.display = 'block';
+        });
+
+        // 6. Handle Voice Recognition Results
+        recognition.onresult = (event) => {
+            const spokenWord = event.results[0][0].transcript.toLowerCase().trim();
+            const correctWord = gameItems[currentIndex].word.toLowerCase();
+
+            // Check if what they said contains the correct word
+            if (spokenWord.includes(correctWord)) {
+                statusText.innerText = `You said: "${spokenWord}"`;
+                speak("Very good");
+                currentIndex++;
+                
+                // Wait a tiny bit for the browser to finish talking before showing the next image
+                setTimeout(loadNextImage, 1500); 
+            } else {
+                statusText.innerText = `You said: "${spokenWord}". Try again!`;
+                speak("No");
+            }
+        };
+
+        recognition.onerror = (event) => {
+            statusText.innerText = "Didn't catch that. Try again.";
+        };
+
+        // Start the game!
+        loadNextImage();
+
+    </script>
+</body>
+</html>
